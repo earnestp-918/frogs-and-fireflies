@@ -43,7 +43,7 @@ const App: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (ctx) ctx.scale(dpr, dpr);
 
-    // FIX 1: Clamp playable area width so pads remain reachable on large screens
+    // Clamp playable area width so pads remain reachable on large screens
     const MAX_GAME_WIDTH = 1200; 
     const gameWidth = Math.min(width, MAX_GAME_WIDTH);
     const offsetX = (width - gameWidth) / 2;
@@ -131,6 +131,12 @@ const App: React.FC = () => {
       gameRef.current.keys[e.code] = true;
       gameRef.current.keys[e.key.toLowerCase()] = true;
       startMusic();
+
+      // GLOBAL QUIT KEY
+      if (e.key === 'Escape' || e.code === 'Escape') {
+        setGameState(GameState.ATTRACT);
+        return;
+      }
 
       if (gameState === GameState.ATTRACT) {
         if (e.code === 'Space' || e.key === ' ') resetGame(GameMode.VS_AI);
@@ -251,9 +257,7 @@ const App: React.FC = () => {
         ctx.drawImage(img, dX, dY, dW, dH);
       }
 
-      // FIX 2: Time-of-day Tinting logic
-      // In Attract mode, we cycle time endlessly (modulo) so the sun sets and rises.
-      // In Game mode, time stops at GAME_DURATION.
+      // Time-of-day Tinting logic
       let effectiveTime = g.gameTime;
       if (gameState === GameState.ATTRACT) {
           effectiveTime = g.gameTime % GAME_DURATION;
@@ -312,7 +316,6 @@ const App: React.FC = () => {
       });
 
       if (gameState === GameState.ATTRACT) {
-        // FIX 3: Increment time in Attract mode for the day/night cycle
         g.gameTime += 1/60; 
         updateAI(g.p1); updateAI(g.p2);
         g.p1.draw(ctx); g.p2.draw(ctx);
@@ -433,7 +436,7 @@ const App: React.FC = () => {
             )}
           </div>
           <div className="text-xl animate-pulse text-gray-300">
-            PRESS SPACE TO RETURN TO MENU
+            PRESS SPACE OR ESC TO RETURN TO MENU
           </div>
         </div>
       )}
