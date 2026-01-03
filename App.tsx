@@ -43,9 +43,14 @@ const App: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (ctx) ctx.scale(dpr, dpr);
 
+    // FIX: Clamp the playable area so pads don't get too far apart on wide screens
+    const MAX_GAME_WIDTH = 1200; 
+    const gameWidth = Math.min(width, MAX_GAME_WIDTH);
+    const offsetX = (width - gameWidth) / 2;
+
     gameRef.current.lilyPads = [
-      new LilyPad(width * PAD_LEFT_PCT - LILY_PAD_WIDTH / 2, 0),
-      new LilyPad(width * PAD_RIGHT_PCT - LILY_PAD_WIDTH / 2, 1)
+      new LilyPad(offsetX + gameWidth * PAD_LEFT_PCT - LILY_PAD_WIDTH / 2, 0),
+      new LilyPad(offsetX + gameWidth * PAD_RIGHT_PCT - LILY_PAD_WIDTH / 2, 1)
     ];
   }, []);
 
@@ -60,6 +65,10 @@ const App: React.FC = () => {
   const resetGame = useCallback((mode: GameMode) => {
     const g = gameRef.current;
     const height = window.innerHeight;
+    
+    // Ensure pads are set correctly before respawning
+    updateDimensions(); 
+
     g.p1.score = 0;
     g.p2.score = 0;
     g.p1.respawn(g.lilyPads, height);
@@ -75,11 +84,11 @@ const App: React.FC = () => {
     setGameState(GameState.PLAYING);
 
     startMusic();
-  }, [startMusic]);
+  }, [startMusic, updateDimensions]);
 
   // Handle Music Initialization with bkgd1.mp3
   useEffect(() => {
-    const audio = new Audio('bkgd1.mp3'); // UPDATED FILE NAME
+    const audio = new Audio('bkgd1.mp3'); 
     audio.loop = true;
     audio.volume = 0.5;
     audioRef.current = audio;
@@ -107,7 +116,7 @@ const App: React.FC = () => {
     }
   }, [isMuted, gameState]);
 
-  // Load Background (lake.jpg from your public folder)
+  // Load Background
   useEffect(() => {
     const img = new Image();
     img.src = 'lake.jpg'; 
@@ -127,10 +136,18 @@ const App: React.FC = () => {
       
       startMusic();
 
+      // Attract Screen Controls
       if (gameState === GameState.ATTRACT) {
         if (e.code === 'Space' || e.key === ' ') resetGame(GameMode.VS_AI);
         else if (e.code === 'Enter') resetGame(GameMode.PVP);
         else if (e.code === 'KeyS' || e.key === 's') resetGame(GameMode.SOLO);
+      }
+      
+      // Game Over Screen Controls (Return to Menu)
+      if (gameState === GameState.GAMEOVER) {
+        if (e.code === 'Space' || e.key === ' ') {
+          setGameState(GameState.ATTRACT);
+        }
       }
 
       const g = gameRef.current;
@@ -372,7 +389,50 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Attract / Game Over Screens ... */}
+      {/* Attract Screen (Main Menu) */}
+      {gameState === GameState.ATTRACT && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-40">
+          <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-yellow-400 mb-8 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
+            FROGS & FIREFLIES
+          </h1>
+          <div className="flex flex-col gap-4 text-xl md:text-2xl font-bold tracking-wide">
+            <button onClick={() => resetGame(GameMode.SOLO)} className="bg-white/10 px-8 py-4 rounded-full border border-white/20 hover:bg-white/20 transition-all flex items-center justify-between gap-8 min-w-[300px]">
+              <span style={{ color: COLORS.P1 }}>SOLO PLAY</span>
+              <span className="text-sm bg-white/20 px-2 py-1 rounded">PRESS S</span>
+            </button>
+            <button onClick={() => resetGame(GameMode.VS_AI)} className="bg-white/10 px-8 py-4 rounded-full border border-white/20 hover:bg-white/20 transition-all flex items-center justify-between gap-8 min-w-[300px]">
+              <span className="text-cyan-400">VS AI CPU</span>
+              <span className="text-sm bg-white/20 px-2 py-1 rounded">PRESS SPACE</span>
+            </button>
+            <button onClick={() => resetGame(GameMode.PVP)} className="bg-white/10 px-8 py-4 rounded-full border border-white/20 hover:bg-white/20 transition-all flex items-center justify-between gap-8 min-w-[300px]">
+              <span style={{ color: COLORS.P2 }}>2 PLAYER VS</span>
+              <span className="text-sm bg-white/20 px-2 py-1 rounded">PRESS ENTER</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Game Over Screen */}
+      {gameState === GameState.GAMEOVER && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md z-50">
+          <h2 className="text-6xl font-black text-white mb-6">GAME OVER</h2>
+          <div className="flex gap-12 text-center mb-12">
+            <div>
+              <div className="text-xl text-gray-400 mb-2">PLAYER 1</div>
+              <div className="text-6xl font-bold" style={{ color: COLORS.P1 }}>{score1}</div>
+            </div>
+            {gameMode !== GameMode.SOLO && (
+              <div>
+                <div className="text-xl text-gray-400 mb-2">{gameMode === GameMode.VS_AI ? 'CPU' : 'PLAYER 2'}</div>
+                <div className="text-6xl font-bold" style={{ color: COLORS.P2 }}>{score2}</div>
+              </div>
+            )}
+          </div>
+          <div className="text-xl animate-pulse text-gray-300">
+            PRESS SPACE TO RETURN TO MENU
+          </div>
+        </div>
+      )}
     </div>
   );
 };
