@@ -43,7 +43,7 @@ const App: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (ctx) ctx.scale(dpr, dpr);
 
-    // FIX: Clamp the playable area so pads don't get too far apart on wide screens
+    // FIX 1: Clamp playable area width so pads remain reachable on large screens
     const MAX_GAME_WIDTH = 1200; 
     const gameWidth = Math.min(width, MAX_GAME_WIDTH);
     const offsetX = (width - gameWidth) / 2;
@@ -66,8 +66,7 @@ const App: React.FC = () => {
     const g = gameRef.current;
     const height = window.innerHeight;
     
-    // Ensure pads are set correctly before respawning
-    updateDimensions(); 
+    updateDimensions();
 
     g.p1.score = 0;
     g.p2.score = 0;
@@ -86,7 +85,6 @@ const App: React.FC = () => {
     startMusic();
   }, [startMusic, updateDimensions]);
 
-  // Handle Music Initialization with bkgd1.mp3
   useEffect(() => {
     const audio = new Audio('bkgd1.mp3'); 
     audio.loop = true;
@@ -116,7 +114,6 @@ const App: React.FC = () => {
     }
   }, [isMuted, gameState]);
 
-  // Load Background
   useEffect(() => {
     const img = new Image();
     img.src = 'lake.jpg'; 
@@ -133,17 +130,14 @@ const App: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       gameRef.current.keys[e.code] = true;
       gameRef.current.keys[e.key.toLowerCase()] = true;
-      
       startMusic();
 
-      // Attract Screen Controls
       if (gameState === GameState.ATTRACT) {
         if (e.code === 'Space' || e.key === ' ') resetGame(GameMode.VS_AI);
         else if (e.code === 'Enter') resetGame(GameMode.PVP);
         else if (e.code === 'KeyS' || e.key === 's') resetGame(GameMode.SOLO);
       }
       
-      // Game Over Screen Controls (Return to Menu)
       if (gameState === GameState.GAMEOVER) {
         if (e.code === 'Space' || e.key === ' ') {
           setGameState(GameState.ATTRACT);
@@ -257,8 +251,16 @@ const App: React.FC = () => {
         ctx.drawImage(img, dX, dY, dW, dH);
       }
 
-      // Time-of-day Tinting
-      const progress = (gameState === GameState.PLAYING || gameState === GameState.GAMEOVER) ? g.gameTime / GAME_DURATION : 0;
+      // FIX 2: Time-of-day Tinting logic
+      // In Attract mode, we cycle time endlessly (modulo) so the sun sets and rises.
+      // In Game mode, time stops at GAME_DURATION.
+      let effectiveTime = g.gameTime;
+      if (gameState === GameState.ATTRACT) {
+          effectiveTime = g.gameTime % GAME_DURATION;
+      }
+      
+      const progress = effectiveTime / GAME_DURATION;
+      
       let tint = 'rgba(0,0,0,0)';
       if (progress < 0.2) {
         tint = 'rgba(255, 255, 255, 0)';
@@ -310,6 +312,8 @@ const App: React.FC = () => {
       });
 
       if (gameState === GameState.ATTRACT) {
+        // FIX 3: Increment time in Attract mode for the day/night cycle
+        g.gameTime += 1/60; 
         updateAI(g.p1); updateAI(g.p2);
         g.p1.draw(ctx); g.p2.draw(ctx);
       } else if (gameState === GameState.PLAYING) {
