@@ -6,14 +6,12 @@ import {
 import { FlyType } from '../types';
 
 /**
- * SoundManager handles procedural audio generation using the Web Audio API.
- * This removes the need for external .mp3 files for game actions.
+ * SoundManager handles procedural audio generation.
  */
 export const SoundManager = {
   ctx: new (window.AudioContext || (window as any).webkitAudioContext)(),
   
   playSplash() {
-    // Generates a murky "kerplunk" using white noise and filters
     const bufferSize = this.ctx.sampleRate * 0.3;
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -23,14 +21,12 @@ export const SoundManager = {
     const filter = this.ctx.createBiquadFilter();
     noise.buffer = buffer;
     filter.type = 'lowpass';
-    // Frequency ramp creates the "plop" effect
     filter.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.3);
     noise.connect(filter).connect(this.ctx.destination);
     noise.start();
   },
 
   playTongue() {
-    // A quick sine wave "chirp" for the tongue catch
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.frequency.setValueAtTime(800, this.ctx.currentTime);
@@ -319,9 +315,7 @@ export class Frog {
       }
 
       if (hitIndex !== -1) {
-        // Trigger procedural catch sound
-        SoundManager.playTongue(); 
-
+        SoundManager.playTongue(); // Catch sound
         const caughtFly = flies[hitIndex];
         let points = 1;
         let color = '#888888';
@@ -370,9 +364,7 @@ export class Frog {
   }
 
   splash(onSplash: (x: number, y: number) => void) {
-    // Trigger procedural kerplunk!
-    SoundManager.playSplash(); 
-
+    SoundManager.playSplash(); // Kerplunk sound
     this.isSplashed = true;
     this.splashTimer = 2000;
     onSplash(this.x, this.y + this.radius);
