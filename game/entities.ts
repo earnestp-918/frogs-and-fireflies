@@ -1,10 +1,46 @@
-
 import { 
   FROG_RADIUS, GRAVITY, FRICTION, MOVE_SPEED, AIR_ACCEL, MAX_SPEED, 
   TONGUE_SPEED, TONGUE_RANGE, LILY_PAD_WIDTH, LILY_PAD_HEIGHT,
   JUMP_FORCE 
 } from './constants';
 import { FlyType } from '../types';
+
+/**
+ * SoundManager handles procedural audio generation using the Web Audio API.
+ * This removes the need for external .mp3 files for game actions.
+ */
+export const SoundManager = {
+  ctx: new (window.AudioContext || (window as any).webkitAudioContext)(),
+  
+  playSplash() {
+    // Generates a murky "kerplunk" using white noise and filters
+    const bufferSize = this.ctx.sampleRate * 0.3;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = this.ctx.createBufferSource();
+    const filter = this.ctx.createBiquadFilter();
+    noise.buffer = buffer;
+    filter.type = 'lowpass';
+    // Frequency ramp creates the "plop" effect
+    filter.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.3);
+    noise.connect(filter).connect(this.ctx.destination);
+    noise.start();
+  },
+
+  playTongue() {
+    // A quick sine wave "chirp" for the tongue catch
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.1);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.1);
+  }
+};
 
 export class Particle {
   x: number;
@@ -92,9 +128,6 @@ export class Fly {
 
   reset(gameWidth: number, gameHeight: number, gameTime: number) {
     this.x = Math.random() > 0.5 ? -20 : gameWidth + 20;
-    // ADJUSTMENT: Lower the spawn floor. 
-    // Previous: Math.random() * (gameHeight - 500) + 50
-    // "1/3 lower" roughly means reducing that 500 offset to around 330.
     this.y = Math.random() * (gameHeight - 330) + 50; 
     this.vx = (Math.random() * 2 + 1) * (this.x < 0 ? 1 : -1);
     this.vy = Math.sin(Math.random() * Math.PI * 2);
@@ -286,6 +319,9 @@ export class Frog {
       }
 
       if (hitIndex !== -1) {
+        // Trigger procedural catch sound
+        SoundManager.playTongue(); 
+
         const caughtFly = flies[hitIndex];
         let points = 1;
         let color = '#888888';
@@ -329,14 +365,14 @@ export class Frog {
 
   shootTongue(flies: Fly[]) {
     if (this.isSplashed || this.tongueState !== 'idle') return;
-
-    // RULE: Strictly horizontal tongue. Eliminate upward/downward snapping.
-    // The frog always shoots straight left or straight right.
     this.tongueAngle = this.facingRight ? 0 : Math.PI;
     this.tongueState = 'extending';
   }
 
   splash(onSplash: (x: number, y: number) => void) {
+    // Trigger procedural kerplunk!
+    SoundManager.playSplash(); 
+
     this.isSplashed = true;
     this.splashTimer = 2000;
     onSplash(this.x, this.y + this.radius);
