@@ -1,0 +1,5 @@
+{
+  "name": "Frogs & Fireflies",
+  "description": "A vibrant pond-based arcade game where you control a frog to catch fireflies and dragonflies. Compete in Solo, vs AI, or local 2-player modes with physics-based jumping and tongue-snapping action.",
+  "requestFramePermissions": []
+}
